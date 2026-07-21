@@ -1,1211 +1,593 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CarbonPad — calm shared notes</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #081119;
-    --bg-deep: #0d1822;
-    --panel: rgba(255, 255, 255, 0.7);
-    --panel-strong: rgba(255, 255, 255, 0.9);
-    --ink: #0f172a;
-    --ink-soft: #475569;
-    --muted: #64748b;
-    --line: rgba(15, 23, 42, 0.12);
-    --accent: #6d7cff;
-    --accent-2: #8b5cf6;
-    --accent-soft: rgba(109, 124, 255, 0.12);
-    --teal: #31c8c5;
-    --danger: #ef4444;
-    --ok: #16a34a;
-    --radius: 24px;
-    --radius-sm: 16px;
-    --shadow: 0 30px 80px rgba(2, 8, 23, 0.14);
-    --display: 'Manrope', 'Inter', 'Segoe UI', sans-serif;
-    --mono: 'JetBrains Mono', 'Courier New', monospace;
-  }
-
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    min-height: 100vh;
-    background:
-      radial-gradient(900px 700px at 10% 0%, rgba(109, 124, 255, 0.24), transparent 62%),
-      radial-gradient(700px 600px at 90% 10%, rgba(139, 92, 246, 0.18), transparent 60%),
-      linear-gradient(140deg, #f8fbff 0%, #f2f6ff 45%, #eef3ff 100%);
-    color: var(--ink);
-    font-family: var(--mono);
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
-
-  body::before,
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body::before {
-    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.9), transparent 22%),
-      radial-gradient(circle at 80% 15%, rgba(109,124,255,0.13), transparent 18%),
-      radial-gradient(circle at 50% 80%, rgba(49,200,197,0.14), transparent 24%);
-    animation: drift 18s ease-in-out infinite alternate;
-    filter: blur(20px);
-  }
-
-  body::after {
-    background-image: linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px);
-    background-size: 38px 38px;
-    opacity: 0.28;
-    mask-image: linear-gradient(180deg, rgba(0,0,0,0.15), transparent 70%);
-  }
-
-  @keyframes drift {
-    0% { transform: translate3d(0, -12px, 0) scale(1); }
-    100% { transform: translate3d(0, 12px, 0) scale(1.04); }
-  }
-
-  #app { position: relative; z-index: 1; min-height: 100vh; }
-  .home, .pad { display: none; }
-  .home.active, .pad.active { display: flex; }
-
-  .home {
-    flex-direction: column;
-    min-height: 100vh;
-    padding: 24px 24px 40px;
-    gap: 28px;
-  }
-
-  .top-nav {
-    position: sticky;
-    top: 16px;
-    z-index: 3;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: min(1180px, 100%);
-    margin: 0 auto;
-    padding: 14px 16px;
-    border: 1px solid rgba(255,255,255,0.7);
-    border-radius: 999px;
-    background: rgba(255,255,255,0.65);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
-  }
-
-  .brand-mark,
-  .brand-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    color: var(--ink);
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    padding: 0;
-    font: inherit;
-  }
-
-  .brand-mark__glyph {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: white;
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 20px;
-    box-shadow: 0 14px 30px rgba(109, 124, 255, 0.25);
-    animation: pulseSoft 4s ease-in-out infinite;
-  }
-
-  @keyframes pulseSoft {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-  }
-
-  .brand-mark__copy { display: flex; flex-direction: column; gap: 2px; }
-  .brand-mark__copy strong {
-    font-family: var(--display);
-    font-size: 1rem;
-    letter-spacing: -0.02em;
-  }
-  .brand-mark__copy small {
-    font-size: 0.74rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .nav-pills {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.58);
-  }
-
-  .nav-pill {
-    border: none;
-    background: transparent;
-    color: var(--ink-soft);
-    padding: 8px 12px;
-    border-radius: 999px;
-    font-size: 0.86rem;
-    font-family: var(--display);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 180ms ease;
-  }
-
-  .nav-pill.active,
-  .nav-pill:hover {
-    background: linear-gradient(135deg, rgba(109,124,255,0.15), rgba(139,92,246,0.12));
-    color: var(--accent);
-  }
-
-  .hero-shell {
-    display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    align-items: center;
-    gap: 28px;
-    width: min(1180px, 100%);
-    margin: 0 auto;
-    flex: 1;
-    padding: 18px 0 4px;
-  }
-
-  .hero-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 21px;
-    max-width: 600px;
-  }
-
-  .eyebrow {
-    display: inline-flex;
-    align-self: flex-start;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(109, 124, 255, 0.1);
-    color: var(--accent);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-  }
-
-  .hero-copy h1 {
-    margin: 0;
-    font-family: var(--display);
-    font-size: clamp(2.3rem, 4.4vw, 4.2rem);
-    line-height: 0.98;
-    letter-spacing: -0.04em;
-    color: #09111f;
-  }
-
-  .hero-copy p {
-    margin: 0;
-    max-width: 560px;
-    font-size: 1rem;
-    line-height: 1.7;
-    color: var(--ink-soft);
-  }
-
-  .hero-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .btn {
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 12px 18px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--display);
-    color: var(--ink);
-    background: rgba(255,255,255,0.7);
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
-    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease, border-color 180ms ease;
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-  }
-
-  .btn:hover,
-  .btn:focus-visible {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
-    border-color: rgba(109, 124, 255, 0.28);
-  }
-
-  .btn:active { transform: scale(0.98); }
-
-  .btn.primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    border-color: transparent;
-    color: white;
-  }
-
-  .btn.secondary {
-    background: rgba(255,255,255,0.78);
-  }
-
-  .hero-highlights {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .hero-highlights li {
-    padding: 8px 11px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.6);
-    border: 1px solid rgba(15,23,42,0.08);
-    color: var(--ink-soft);
-    font-size: 0.85rem;
-  }
-
-  .hero-panel {
-    display: flex;
-    justify-content: center;
-  }
-
-  .panel-card {
-    width: min(100%, 500px);
-    padding: 24px;
-    border-radius: 32px;
-    border: 1px solid rgba(255,255,255,0.7);
-    background: linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.58));
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .panel-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(130deg, rgba(255,255,255,0.22), transparent 30%, rgba(109,124,255,0.06));
-    pointer-events: none;
-  }
-
-  .input-card {
-    padding: 18px;
-    border-radius: 24px;
-    background: rgba(255,255,255,0.82);
-    border: 1px solid rgba(15,23,42,0.08);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-  }
-
-  .input-card label {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--muted);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    font-weight: 700;
-  }
-
-  .path-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border-radius: 18px;
-    padding: 12px 14px;
-    background: linear-gradient(180deg, rgba(248,250,252,0.96), rgba(241,245,249,0.86));
-    border: 1px solid rgba(15,23,42,0.08);
-    box-shadow: inset 0 1px 1px rgba(255,255,255,0.6);
-  }
-
-  .path-line .prefix {
-    color: var(--muted);
-    font-size: 0.96rem;
-    white-space: nowrap;
-  }
-
-  .path-line input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--ink);
-    font-family: var(--mono);
-    font-size: 0.98rem;
-    caret-color: var(--accent);
-  }
-
-  .path-line input::placeholder { color: #94a3b8; }
-
-  .cursor-blink {
-    width: 8px;
-    height: 18px;
-    background: linear-gradient(180deg, var(--accent), var(--accent-2));
-    border-radius: 999px;
-    animation: blink 1s step-end infinite;
-    flex-shrink: 0;
-  }
-
-  @keyframes blink { 50% { opacity: 0; } }
-
-  .helper-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
-  }
-
-  .helper-chip {
-    padding: 7px 10px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    color: var(--ink-soft);
-    background: rgba(109,124,255,0.08);
-    border: 1px solid rgba(109,124,255,0.1);
-  }
-
-  .mini-stack { display: grid; gap: 12px; }
-  .mini-card {
-    padding: 16px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.78);
-    border: 1px solid rgba(15,23,42,0.08);
-  }
-  .mini-card.accent {
-    background: linear-gradient(135deg, rgba(49,200,197,0.14), rgba(109,124,255,0.12));
-  }
-  .mini-card__title {
-    font-family: var(--display);
-    font-size: 0.98rem;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-  .mini-card p {
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    color: var(--ink-soft);
-  }
-
-  .pad {
-    flex-direction: column;
-    min-height: 100vh;
-    padding: 20px 20px 28px;
-    gap: 18px;
-  }
-
-  .top-nav.pad-nav {
-    width: min(1250px, 100%);
-    margin: 0 auto;
-  }
-
-  .pad-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 12px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.72);
-    border: 1px solid rgba(15,23,42,0.08);
-    color: var(--ink-soft);
-    font-size: 0.86rem;
-    font-family: var(--display);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .status-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--teal));
-    box-shadow: 0 0 0 5px rgba(109,124,255,0.14);
-  }
-
-  .status.saving { color: var(--accent); }
-  .status.saved { color: var(--ok); }
-  .status.locked { color: var(--danger); }
-
-  .icon-btn {
-    width: 44px;
-    height: 44px;
-    border: 1px solid rgba(15,23,42,0.08);
-    border-radius: 999px;
-    background: rgba(255,255,255,0.86);
-    color: var(--ink);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: transform 180ms ease, box-shadow 180ms ease, color 180ms ease, border-color 180ms ease;
-    box-shadow: 0 12px 24px rgba(15,23,42,0.06);
-  }
-
-  .icon-btn:hover, .icon-btn:focus-visible {
-    transform: translateY(-2px);
-    color: var(--accent);
-    border-color: rgba(109,124,255,0.22);
-  }
-  .icon-btn.active-lock {
-    color: var(--accent);
-    border-color: rgba(109,124,255,0.26);
-    box-shadow: 0 16px 28px rgba(109,124,255,0.16);
-  }
-
-  .workspace-card {
-    width: min(1250px, 100%);
-    margin: 0 auto;
-    flex: 1;
-    border-radius: 32px;
-    padding: 24px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.72));
-    border: 1px solid rgba(255,255,255,0.78);
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .workspace-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(140deg, rgba(255,255,255,0.24), transparent 35%, rgba(109,124,255,0.08));
-    pointer-events: none;
-  }
-
-  .workspace-head {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding: 4px 2px;
-  }
-
-  .workspace-kicker {
-    margin: 0 0 6px;
-    font-size: 0.72rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 700;
-  }
-
-  .workspace-title {
-    margin: 0;
-    font-family: var(--display);
-    font-size: clamp(1.2rem, 2vw, 1.55rem);
-    letter-spacing: -0.03em;
-    color: #08111d;
-    word-break: break-word;
-  }
-
-  .workspace-badge {
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(109,124,255,0.1);
-    color: var(--accent);
-    font-size: 0.8rem;
-    font-weight: 700;
-    border: 1px solid rgba(109,124,255,0.12);
-  }
-
-  .editor-wrap {
-    position: relative;
-    flex: 1;
-    border-radius: 24px;
-    overflow: hidden;
-    border: 1px solid rgba(15,23,42,0.08);
-    background: rgba(248,250,252,0.75);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
-  }
-
-  textarea {
-    width: 100%;
-    height: 100%;
-    min-height: 420px;
-    resize: none;
-    border: none;
-    outline: none;
-    padding: 24px 24px 26px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.3), rgba(248,250,252,0.4)),
-      repeating-linear-gradient(to bottom, transparent, transparent 29px, rgba(15,23,42,0.06) 29px, transparent 30px);
-    font-family: var(--mono);
-    font-size: 0.97rem;
-    line-height: 30px;
-    color: var(--ink);
-    caret-color: var(--accent);
-  }
-
-  textarea::placeholder { color: #94a3b8; }
-  textarea:disabled { color: var(--muted); }
-
-  .readonly-banner {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.18);
-    border-radius: 999px;
-    color: var(--danger);
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    pointer-events: none;
-    z-index: 2;
-  }
-
-  .overlay {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    z-index: 10;
-    background: rgba(9, 17, 29, 0.38);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-
-  .overlay.active { display: flex; }
-
-  .modal {
-    width: min(440px, 100%);
-    padding: 24px;
-    border-radius: 28px;
-    border: 1px solid rgba(255,255,255,0.72);
-    background: linear-gradient(145deg, rgba(255,255,255,0.97), rgba(255,255,255,0.82));
-    box-shadow: 0 30px 60px rgba(2,8,23,0.18);
-    backdrop-filter: blur(22px);
-    -webkit-backdrop-filter: blur(22px);
-  }
-
-  .modal h2 {
-    margin: 0 0 8px;
-    font-family: var(--display);
-    font-size: 1.3rem;
-    color: #08111d;
-  }
-
-  .modal p.sub {
-    margin: 0 0 16px;
-    line-height: 1.6;
-    color: var(--ink-soft);
-    font-size: 0.93rem;
-  }
-
-  .modal input[type="password"],
-  .modal input[type="text"] {
-    width: 100%;
-    border: 1px solid rgba(15,23,42,0.1);
-    border-radius: 16px;
-    padding: 12px 14px;
-    margin-bottom: 10px;
-    background: rgba(248,250,252,0.9);
-    color: var(--ink);
-    font-family: var(--mono);
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 180ms ease, box-shadow 180ms ease;
-  }
-
-  .modal input:focus {
-    border-color: rgba(109, 124, 255, 0.35);
-    box-shadow: 0 0 0 4px rgba(109,124,255,0.12);
-  }
-
-  .modal-error {
-    min-height: 18px;
-    margin: -2px 0 12px;
-    color: var(--danger);
-    font-size: 0.84rem;
-    line-height: 1.5;
-  }
-
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-  }
-
-  .btn.danger-link {
-    border: none;
-    background: transparent;
-    box-shadow: none;
-    color: var(--muted);
-    text-decoration: underline;
-    padding: 10px 4px;
-  }
-
-  .btn.danger-link:hover { color: var(--danger); }
-
-  .ripple-layer {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: 20;
-  }
-
-  .ripple {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    transform: translate(-50%, -50%) scale(0.2);
-    opacity: 0;
-    background: rgba(109, 124, 255, 0.18);
-    animation: rippleExpand 680ms cubic-bezier(.2, .8, .2, 1) forwards;
-  }
-
-  @keyframes rippleExpand {
-    0% { opacity: 0.45; transform: translate(-50%, -50%) scale(0.2); }
-    100% { opacity: 0; transform: translate(-50%, -50%) scale(18); }
-  }
-
-  .cursor-glow {
-    position: fixed;
-    width: 240px;
-    height: 240px;
-    border-radius: 50%;
-    pointer-events: none;
-    background: radial-gradient(circle, rgba(255,255,255,0.6), rgba(109,124,255,0.2) 35%, transparent 70%);
-    filter: blur(40px);
-    transform: translate(-50%, -50%);
-    opacity: 0.6;
-    mix-blend-mode: screen;
-    z-index: 0;
-    transition: opacity 180ms ease;
-  }
-
-  @media (max-width: 870px) {
-    .hero-shell { grid-template-columns: 1fr; }
-    .hero-copy { max-width: none; }
-    .panel-card { width: 100%; }
-  }
-
-  @media (max-width: 640px) {
-    .home, .pad { padding: 16px 16px 24px; }
-    .top-nav { border-radius: 24px; padding: 12px; }
-    .nav-pills { display: none; }
-    .hero-copy h1 { font-size: clamp(2rem, 8vw, 2.7rem); }
-    .panel-card, .workspace-card, .modal { border-radius: 24px; }
-    textarea { min-height: 360px; padding: 18px; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarbonPad</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --panel-strong: #f8fafc;
+      --border: #dfe5ee;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --danger: #dc2626;
+      --success: #15803d;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input, textarea {
+      font: inherit;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .card {
+      width: min(100%, 480px);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .form {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: var(--panel-strong);
+      color: var(--text);
+      outline: none;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 15px;
+      cursor: pointer;
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--panel-strong);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .hint {
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .message {
+      min-height: 1.2em;
+      font-size: 0.92rem;
+      color: var(--danger);
+      margin-top: 2px;
+    }
+
+    .message.success { color: var(--success); }
+
+    .pad-shell {
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .topbar .meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .topbar .meta strong {
+      font-size: 0.96rem;
+      overflow-wrap: anywhere;
+    }
+
+    .topbar .meta span {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .topbar .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 0;
+    }
+
+    .editor-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 360px;
+      border: 0;
+      border-radius: 0;
+      background: var(--panel);
+      padding: 18px 18px 24px;
+      resize: none;
+      line-height: 1.6;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+      background: var(--panel-strong);
+    }
+
+    @media (max-width: 640px) {
+      .card, .topbar, .editor-wrap { border-radius: 16px; }
+      .pad-shell { padding: 12px; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+      .topbar .actions { width: 100%; }
+      .topbar .actions button { flex: 1; }
+    }
+  </style>
 </head>
 <body>
-<div class="cursor-glow" aria-hidden="true"></div>
-<div class="ripple-layer" aria-hidden="true"></div>
-<div id="app">
-
-  <div class="home active" id="homeView">
-    <nav class="top-nav" aria-label="Primary">
-      <button class="brand-mark" type="button" aria-label="CarbonPad home">
-        <span class="brand-mark__glyph">C</span>
-        <span class="brand-mark__copy">
-          <strong>CarbonPad</strong>
-          <small>shared calm writing</small>
-        </span>
-      </button>
-      <div class="nav-pills">
-        <button class="nav-pill active" type="button">Home</button>
-        <button class="nav-pill" type="button">Secure</button>
-        <button class="nav-pill" type="button">Private</button>
-      </div>
-    </nav>
-
-    <main class="hero-shell">
-      <section class="hero-copy">
-        <span class="eyebrow">desktop-grade calm</span>
-        <h1>Write beautifully. Share quietly.</h1>
-        <p>Open any pad, protect it with a unique password, and keep your thoughts flowing in a workspace that feels effortless, clear, and premium.</p>
-        <div class="hero-actions">
-          <button class="btn primary" id="goBtn" type="button">Open a pad</button>
-          <button class="btn secondary" type="button">Why it feels different</button>
-        </div>
-        <ul class="hero-highlights">
-          <li>Instant shared notes</li>
-          <li>Unique password locks</li>
-          <li>Crafted for focus</li>
-        </ul>
-      </section>
-
-      <section class="hero-panel" aria-label="Pad launcher">
-        <div class="panel-card">
-          <div class="input-card">
-            <label for="padNameInput">Start with any name</label>
-            <div class="path-line">
-              <span class="prefix">carbon.pad/</span>
-              <input id="padNameInput" type="text" placeholder="anything" autocomplete="off" spellcheck="false">
-              <span class="cursor-blink"></span>
-            </div>
-            <div class="helper-row">
-              <span class="helper-chip">No signup needed</span>
-              <span class="helper-chip">Shared in real time</span>
-            </div>
-          </div>
-          <div class="mini-stack">
-            <div class="mini-card">
-              <div class="mini-card__title">Security stays optional</div>
-              <p>Lock a page whenever you want privacy. Passwords remain page-specific and elegantly handled.</p>
-            </div>
-            <div class="mini-card accent">
-              <div class="mini-card__title">Designed to feel calm</div>
-              <p>Every interaction is tuned for softness, clarity, and a smooth sense of motion.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div class="pad" id="padView">
-    <nav class="top-nav pad-nav" aria-label="Pad navigation">
-      <button class="brand-link" id="homeLink" type="button" title="back to carbon.pad">
-        <span class="brand-mark__glyph">C</span>
-        <span class="brand-mark__copy">
-          <strong>CarbonPad</strong>
-          <small>back home</small>
-        </span>
-      </button>
-      <div class="pad-actions">
-        <div class="status-pill">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span class="status" id="statusText">loading…</span>
-        </div>
-        <button class="icon-btn" id="lockBtn" title="lock / unlock this page" aria-label="lock / unlock this page" type="button">🔒</button>
-      </div>
-    </nav>
-
-    <main class="workspace-card">
-      <div class="workspace-head">
+  <div id="homeView" class="shell">
+    <div class="card">
+      <div class="brand">
+        <div class="brand-mark">C</div>
         <div>
-          <p class="workspace-kicker">Active pad</p>
-          <h2 class="workspace-title" id="padNameLabel"></h2>
+          <h1>CarbonPad</h1>
+          <p>Quick, private notes with safe pad IDs.</p>
         </div>
-        <div class="workspace-badge">Live note space</div>
       </div>
-      <div class="editor-wrap">
-        <div class="readonly-banner" id="readonlyBanner" style="display:none;">locked — enter password to edit</div>
-        <textarea id="editor" placeholder="start typing…" spellcheck="false" disabled></textarea>
-      </div>
-    </main>
-  </div>
-</div>
 
-<div class="overlay" id="unlockOverlay">
-  <div class="modal">
-    <h2>This page is locked</h2>
-    <p class="sub">Enter the password for <span id="unlockPadName"></span> to view and edit it.</p>
-    <input type="password" id="unlockInput" placeholder="password" autocomplete="off">
-    <div class="modal-error" id="unlockError"></div>
-    <div class="modal-actions">
-      <button class="btn" id="unlockCancel" type="button">back to carbon.pad</button>
-      <button class="btn primary" id="unlockSubmit" type="button">unlock</button>
+      <form id="openForm" class="form">
+        <label for="padNameInput">Pad ID</label>
+        <input id="padNameInput" name="padId" type="text" placeholder="my-notes" autocomplete="off" spellcheck="false" required>
+
+        <label for="passwordInput">Password (optional)</label>
+        <input id="passwordInput" name="password" type="password" placeholder="Leave blank for a public pad" autocomplete="off">
+
+        <div class="actions">
+          <button class="btn-primary" id="openBtn" type="submit">Open Pad</button>
+          <button class="btn-secondary" id="randomIdBtn" type="button">Use random ID</button>
+        </div>
+
+        <div class="hint">New pads are created only when the ID is unused. Existing pads open safely and will never be overwritten.</div>
+        <div id="message" class="message" aria-live="polite"></div>
+      </form>
     </div>
   </div>
-</div>
 
-<div class="overlay" id="lockOverlay">
-  <div class="modal">
-    <h2 id="lockModalTitle">Lock this page</h2>
-    <p class="sub">Pick a password. Passwords aren't shared between pages — if this one's already taken by another page, you'll need a different one.</p>
-    <input type="password" id="lockInput" placeholder="new password" autocomplete="off">
-    <div class="modal-error" id="lockError"></div>
-    <div class="modal-actions">
-      <button class="btn danger-link" id="removeLockBtn" style="display:none;" type="button">remove password instead</button>
-      <button class="btn" id="lockCancel" type="button">cancel</button>
-      <button class="btn primary" id="lockSubmit" type="button">save password</button>
+  <div id="padView" class="pad-shell" hidden>
+    <div class="topbar">
+      <div class="meta">
+        <strong id="padNameLabel"></strong>
+        <span id="statusText">Loading…</span>
+      </div>
+      <div class="actions">
+        <button class="btn-secondary" id="backBtn" type="button">Back</button>
+        <button class="btn-secondary" id="protectBtn" type="button">Protect</button>
+      </div>
+    </div>
+
+    <div class="editor-wrap">
+      <textarea id="editor" placeholder="Start typing…" spellcheck="false"></textarea>
+      <div class="footer">
+        <span id="footerHint">Saved locally through the backend API.</span>
+        <span id="saveState">Ready</span>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-(function(){
-  const homeView = document.getElementById('homeView');
-  const padView = document.getElementById('padView');
-  const padNameInput = document.getElementById('padNameInput');
-  const goBtn = document.getElementById('goBtn');
-  const homeLink = document.getElementById('homeLink');
-  const padNameLabel = document.getElementById('padNameLabel');
-  const statusText = document.getElementById('statusText');
-  const lockBtn = document.getElementById('lockBtn');
-  const editor = document.getElementById('editor');
-  const readonlyBanner = document.getElementById('readonlyBanner');
+  <script>
+    (function () {
+      const homeView = document.getElementById('homeView');
+      const padView = document.getElementById('padView');
+      const form = document.getElementById('openForm');
+      const padNameInput = document.getElementById('padNameInput');
+      const passwordInput = document.getElementById('passwordInput');
+      const openBtn = document.getElementById('openBtn');
+      const randomIdBtn = document.getElementById('randomIdBtn');
+      const message = document.getElementById('message');
+      const padNameLabel = document.getElementById('padNameLabel');
+      const statusText = document.getElementById('statusText');
+      const editor = document.getElementById('editor');
+      const saveState = document.getElementById('saveState');
+      const backBtn = document.getElementById('backBtn');
+      const protectBtn = document.getElementById('protectBtn');
+      const footerHint = document.getElementById('footerHint');
 
-  const unlockOverlay = document.getElementById('unlockOverlay');
-  const unlockPadName = document.getElementById('unlockPadName');
-  const unlockInput = document.getElementById('unlockInput');
-  const unlockError = document.getElementById('unlockError');
-  const unlockSubmit = document.getElementById('unlockSubmit');
-  const unlockCancel = document.getElementById('unlockCancel');
+      const apiBase = '/api/pads';
+      const state = {
+        padId: null,
+        token: null,
+        protected: false,
+        content: '',
+        dirty: false,
+        saveTimer: null,
+      };
 
-  const lockOverlay = document.getElementById('lockOverlay');
-  const lockModalTitle = document.getElementById('lockModalTitle');
-  const lockInput = document.getElementById('lockInput');
-  const lockError = document.getElementById('lockError');
-  const lockSubmit = document.getElementById('lockSubmit');
-  const lockCancel = document.getElementById('lockCancel');
-  const removeLockBtn = document.getElementById('removeLockBtn');
+      function setMessage(text, type) {
+        message.textContent = text || '';
+        message.className = 'message' + (type ? ' ' + type : '');
+      }
 
-  let currentPad = null;
-  let padData = null;
-  let unlocked = false;
-  let saveTimer = null;
+      function setStatus(text) {
+        statusText.textContent = text || 'Ready';
+      }
 
-  async function sha256Hex(text){
-    const enc = new TextEncoder().encode(text);
-    const buf = await crypto.subtle.digest('SHA-256', enc);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
+      function setSaveState(text) {
+        saveState.textContent = text || 'Ready';
+      }
 
-  function randomToken(){
-    const arr = new Uint8Array(24);
-    crypto.getRandomValues(arr);
-    return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
+      function sanitizePadId(raw) {
+        const value = (raw || '').trim();
+        if (!value) return '';
+        const sanitized = value.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_.]/g, '');
+        return sanitized;
+      }
 
-  async function storageGet(key, shared){
-    try{
-      const res = await window.storage.get(key, shared);
-      return res ? res.value : null;
-    }catch(e){
-      return null;
-    }
-  }
-  async function storageSet(key, value, shared){
-    try{
-      const res = await window.storage.set(key, value, shared);
-      return !!res;
-    }catch(e){
-      return false;
-    }
-  }
-  async function storageDelete(key, shared){
-    try{ await window.storage.delete(key, shared); }catch(e){ /* ignore */ }
-  }
+      function generatePadId() {
+        return 'pad-' + Math.random().toString(36).slice(2, 10);
+      }
 
-  function setStatus(text, cls){
-    statusText.textContent = text;
-    statusText.className = 'status' + (cls ? ' ' + cls : '');
-  }
+      function renderView() {
+        if (state.padId) {
+          homeView.hidden = true;
+          padView.hidden = false;
+          padNameLabel.textContent = state.padId;
+          footerHint.textContent = state.protected ? 'Protected with a password.' : 'Public pad';
+        } else {
+          homeView.hidden = false;
+          padView.hidden = true;
+        }
+      }
 
-  function sanitizeName(raw){
-    return raw.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_.]/g, '');
-  }
+      function getRoutePadId() {
+        const hash = location.hash.replace(/^#\//, '');
+        return hash ? decodeURIComponent(hash) : '';
+      }
 
-  function goHome(){
-    location.hash = '';
-  }
+      function setRoutePadId(padId) {
+        if (padId) {
+          location.hash = '#/' + encodeURIComponent(padId);
+        } else {
+          location.hash = '';
+        }
+      }
 
-  function goToPad(name){
-    location.hash = '#/' + encodeURIComponent(name);
-  }
+      function resetEditor() {
+        editor.value = '';
+        state.content = '';
+        state.dirty = false;
+        state.token = null;
+      }
 
-  function currentRouteName(){
-    const h = location.hash;
-    if (!h || h === '#' || h === '#/') return null;
-    const m = h.match(/^#\/(.+)$/);
-    if (!m) return null;
-    try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; }
-  }
+      async function requestJson(path, options = {}) {
+        const response = await fetch(path, options);
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch (error) {
+          payload = null;
+        }
+        if (!response.ok) {
+          const messageText = payload && payload.error ? payload.error : 'Request failed.';
+          throw new Error(messageText);
+        }
+        return payload;
+      }
 
-  window.addEventListener('hashchange', route);
-  function route(){
-    const name = currentRouteName();
-    if (!name){
-      homeView.classList.add('active');
-      padView.classList.remove('active');
-      closeAllOverlays();
-      currentPad = null;
-      padData = null;
-      return;
-    }
-    homeView.classList.remove('active');
-    padView.classList.add('active');
-    openPad(name);
-  }
+      async function openPad(padId, password, options = {}) {
+        const id = sanitizePadId(padId);
+        if (!id) {
+          setMessage('Please enter a Pad ID.', 'error');
+          return;
+        }
 
-  async function openPad(name){
-    currentPad = name;
-    padNameLabel.textContent = name;
-    editor.value = '';
-    editor.disabled = true;
-    unlocked = false;
-    readonlyBanner.style.display = 'none';
-    lockBtn.classList.remove('active-lock');
-    setStatus('loading…');
+        setMessage('', '');
+        setStatus('Checking pad…');
+        setSaveState('Working');
+        openBtn.disabled = true;
+        randomIdBtn.disabled = true;
 
-    const raw = await storageGet('pad:' + name, true);
-    if (raw){
-      try{ padData = JSON.parse(raw); }
-      catch(e){ padData = { content:'', passwordHash:null, tokens:[] }; }
-    } else {
-      padData = { content:'', passwordHash:null, tokens:[] };
-    }
-    if (!padData.tokens) padData.tokens = [];
+        try {
+          const existing = await requestJson(`${apiBase}/${encodeURIComponent(id)}`);
 
-    if (!padData.passwordHash){
-      unlocked = true;
-    } else {
-      const myToken = await storageGet('mytoken:' + name, false);
-      if (myToken && padData.tokens.includes(myToken)){
-        unlocked = true;
+          if (!existing.exists) {
+            if (password) {
+              const lockData = await requestJson(`${apiBase}/${encodeURIComponent(id)}/lock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+              });
+              state.token = lockData.token || null;
+              state.protected = true;
+            } else {
+              await requestJson(`${apiBase}/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: '' })
+              });
+              state.token = null;
+              state.protected = false;
+            }
+
+            state.padId = id;
+            state.content = '';
+            resetEditor();
+            editor.disabled = false;
+            setStatus('New pad ready');
+            setSaveState('Ready');
+            setMessage('Created a new pad with a unique ID.', 'success');
+            renderView();
+            setRoutePadId(id);
+            return;
+          }
+
+          if (existing.hasPassword) {
+            if (!password) {
+              throw new Error('That pad is protected. Enter the correct password to open it.');
+            }
+            const unlockData = await requestJson(`${apiBase}/${encodeURIComponent(id)}/unlock`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password })
+            });
+            state.token = unlockData.token || null;
+            state.protected = true;
+            state.content = unlockData.content || '';
+          } else {
+            state.token = null;
+            state.protected = false;
+            state.content = existing.content || '';
+          }
+
+          state.padId = id;
+          editor.value = state.content;
+          editor.disabled = false;
+          setStatus(existing.hasPassword ? 'Opened securely' : 'Opened');
+          setSaveState('Ready');
+          setMessage('', '');
+          renderView();
+          setRoutePadId(id);
+        } catch (error) {
+          setStatus('Unable to open pad');
+          setSaveState('Error');
+          setMessage(error.message || 'Unable to open pad.', 'error');
+          state.padId = null;
+          state.token = null;
+          renderView();
+          setRoutePadId('');
+        } finally {
+          openBtn.disabled = false;
+          randomIdBtn.disabled = false;
+        }
+      }
+
+      async function saveContent() {
+        if (!state.padId) return;
+        const content = editor.value;
+        if (typeof content !== 'string' || content.length > 262144) {
+          setSaveState('Too large');
+          return;
+        }
+
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          if (state.token) {
+            headers.Authorization = `Bearer ${state.token}`;
+          }
+
+          await requestJson(`${apiBase}/${encodeURIComponent(state.padId)}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ content })
+          });
+          state.content = content;
+          state.dirty = false;
+          setSaveState('Saved');
+        } catch (error) {
+          setSaveState('Save failed');
+          setMessage(error.message || 'Could not save.', 'error');
+        }
+      }
+
+      function scheduleSave() {
+        if (!state.padId) return;
+        state.dirty = true;
+        setSaveState('Saving…');
+        clearTimeout(state.saveTimer);
+        state.saveTimer = setTimeout(saveContent, 700);
+      }
+
+      editor.addEventListener('input', scheduleSave);
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        openPad(padNameInput.value, passwordInput.value);
+      });
+
+      randomIdBtn.addEventListener('click', () => {
+        const generated = generatePadId();
+        padNameInput.value = generated;
+        passwordInput.value = '';
+        setMessage('Generated a fresh Pad ID. You can open it now.', 'success');
+      });
+
+      backBtn.addEventListener('click', () => {
+        state.padId = null;
+        state.token = null;
+        state.protected = false;
+        state.content = '';
+        clearTimeout(state.saveTimer);
+        setMessage('', '');
+        setSaveState('Ready');
+        renderView();
+        setRoutePadId('');
+      });
+
+      protectBtn.addEventListener('click', async () => {
+        if (!state.padId) return;
+        const password = window.prompt('Set a password for this pad (leave blank to remove protection):');
+        if (password === null) return;
+
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          if (state.token) {
+            headers.Authorization = `Bearer ${state.token}`;
+          }
+
+          if (!password) {
+            await requestJson(`${apiBase}/${encodeURIComponent(state.padId)}/lock`, {
+              method: 'DELETE',
+              headers
+            });
+            state.protected = false;
+            state.token = null;
+            setMessage('Password removed.', 'success');
+          } else {
+            const lockData = await requestJson(`${apiBase}/${encodeURIComponent(state.padId)}/lock`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ password })
+            });
+            state.token = lockData.token || null;
+            state.protected = true;
+            setMessage('Password saved.', 'success');
+          }
+          setStatus(state.protected ? 'Protected' : 'Unprotected');
+          renderView();
+        } catch (error) {
+          setMessage(error.message || 'Could not update password.', 'error');
+        }
+      });
+
+      window.addEventListener('hashchange', () => {
+        const routeId = getRoutePadId();
+        if (routeId && routeId !== state.padId) {
+          openPad(routeId, '');
+        }
+      });
+
+      const initialRoute = getRoutePadId();
+      if (initialRoute) {
+        openPad(initialRoute, '');
       } else {
-        unlocked = false;
+        renderView();
       }
-    }
-
-    renderLockState();
-
-    if (!unlocked){
-      promptUnlock();
-    } else {
-      editor.value = padData.content || '';
-      editor.disabled = false;
-      setStatus('saved', 'saved');
-    }
-  }
-
-  function renderLockState(){
-    if (padData && padData.passwordHash){
-      lockBtn.textContent = '🔒';
-      lockBtn.classList.add('active-lock');
-    } else {
-      lockBtn.textContent = '🔓';
-      lockBtn.classList.remove('active-lock');
-    }
-    if (!unlocked && padData && padData.passwordHash){
-      editor.disabled = true;
-      readonlyBanner.style.display = 'block';
-      setStatus('locked', 'locked');
-    } else {
-      readonlyBanner.style.display = 'none';
-    }
-  }
-
-  editor.addEventListener('input', () => {
-    if (!unlocked) return;
-    setStatus('saving…', 'saving');
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveContent, 600);
-  });
-
-  async function saveContent(){
-    if (!currentPad) return;
-    try {
-      await storageSet('pad:' + currentPad, JSON.stringify({ ...padData, content }), true);
-      setStatus('saved', 'saved');
-    } catch (e) {
-      setStatus('could not save', 'locked');
-    }
-  }
-
-  goBtn.addEventListener('click', () => {
-    const name = sanitizeName(padNameInput.value);
-    if (name) goToPad(name);
-  });
-  padNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') goBtn.click(); });
-  homeLink.addEventListener('click', goHome);
-
-  function promptUnlock(){
-    unlockPadName.textContent = 'carbon.pad/' + currentPad;
-    unlockInput.value = '';
-    unlockError.textContent = '';
-    unlockOverlay.classList.add('active');
-    setTimeout(() => unlockInput.focus(), 50);
-  }
-  function closeUnlock(){ unlockOverlay.classList.remove('active'); }
-  unlockCancel.addEventListener('click', () => { closeUnlock(); goHome(); });
-  unlockInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockSubmit.click(); });
-
-  unlockSubmit.addEventListener('click', async () => {
-    const pw = unlockInput.value;
-    if (!pw){ unlockError.textContent = 'enter a password.'; return; }
-    unlockSubmit.disabled = true;
-    try {
-      const token = randomToken();
-      const hash = await sha256Hex(pw);
-      const raw = await storageGet('pad:' + currentPad, true);
-      let data = { content:'', passwordHash:null, tokens:[] };
-      if (raw) try { data = JSON.parse(raw); } catch(e){}
-      if (data.passwordHash && data.passwordHash !== hash){
-        unlockError.textContent = 'incorrect password.';
-        unlockSubmit.disabled = false;
-        return;
-      }
-      if (!data.passwordHash){
-        unlockError.textContent = 'this pad is not locked.';
-        unlockSubmit.disabled = false;
-        return;
-      }
-      data.tokens = data.tokens || [];
-      data.tokens.push(token);
-      await storageSet('pad:' + currentPad, JSON.stringify(data), true);
-      await storageSet('mytoken:' + currentPad, token, false);
-      unlocked = true;
-      closeUnlock();
-      renderLockState();
-      editor.value = data.content || '';
-      editor.disabled = false;
-      setStatus('saved', 'saved');
-    } catch (e) {
-      unlockError.textContent = 'could not unlock this pad.';
-    }
-    unlockSubmit.disabled = false;
-  });
-
-  lockBtn.addEventListener('click', () => {
-    if (!currentPad) return;
-    if (padData && padData.passwordHash && !unlocked){ promptUnlock(); return; }
-    openLockModal();
-  });
-
-  function openLockModal(){
-    lockModalTitle.textContent = padData && padData.passwordHash ? 'Change password' : 'Lock this page';
-    lockInput.value = '';
-    lockError.textContent = '';
-    removeLockBtn.style.display = padData && padData.passwordHash ? 'inline-block' : 'none';
-    lockOverlay.classList.add('active');
-    setTimeout(() => lockInput.focus(), 50);
-  }
-  function closeLockModal(){ lockOverlay.classList.remove('active'); }
-  lockCancel.addEventListener('click', closeLockModal);
-  lockInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') lockSubmit.click(); });
-
-  lockSubmit.addEventListener('click', async () => {
-    const pw = lockInput.value;
-    if (!pw || pw.length < 3){ lockError.textContent = 'password needs to be at least 3 characters.'; return; }
-    lockSubmit.disabled = true;
-    lockError.textContent = '';
-    try {
-      const hash = await sha256Hex(pw);
-      const raw = await storageGet('pad:' + currentPad, true);
-      let data = { content:'', passwordHash:null, tokens:[] };
-      if (raw) try { data = JSON.parse(raw); } catch(e){}
-      data.passwordHash = hash;
-      data.tokens = data.tokens || [];
-      await storageSet('pad:' + currentPad, JSON.stringify(data), true);
-      padData = data;
-      unlocked = true;
-      closeLockModal();
-      renderLockState();
-      editor.disabled = false;
-      setStatus('saved', 'saved');
-    } catch (e) {
-      lockError.textContent = 'could not save this password.';
-    }
-    lockSubmit.disabled = false;
-  });
-
-  removeLockBtn.addEventListener('click', async () => {
-    try {
-      const raw = await storageGet('pad:' + currentPad, true);
-      let data = { content:'', passwordHash:null, tokens:[] };
-      if (raw) try { data = JSON.parse(raw); } catch(e){}
-      data.passwordHash = null;
-      data.tokens = [];
-      await storageSet('pad:' + currentPad, JSON.stringify(data), true);
-      await storageDelete('mytoken:' + currentPad, false);
-      padData = data;
-      unlocked = true;
-      closeLockModal();
-      renderLockState();
-      editor.disabled = false;
-      setStatus('saved', 'saved');
-    } catch (e) {
-      lockError.textContent = 'could not remove password.';
-    }
-  });
-
-  function closeAllOverlays(){
-    unlockOverlay.classList.remove('active');
-    lockOverlay.classList.remove('active');
-  }
-
-  const rippleLayer = document.querySelector('.ripple-layer');
-  const cursorGlow = document.querySelector('.cursor-glow');
-  let pointerX = window.innerWidth / 2;
-  let pointerY = window.innerHeight / 2;
-  let glowX = pointerX;
-  let glowY = pointerY;
-
-  document.addEventListener('pointermove', (event) => {
-    pointerX = event.clientX;
-    pointerY = event.clientY;
-  });
-
-  function animateGlow(){
-    glowX += (pointerX - glowX) * 0.1;
-    glowY += (pointerY - glowY) * 0.1;
-    cursorGlow.style.left = `${glowX}px`;
-    cursorGlow.style.top = `${glowY}px`;
-    requestAnimationFrame(animateGlow);
-  }
-  animateGlow();
-
-  document.addEventListener('pointerdown', (event) => {
-    const ripple = document.createElement('span');
-    ripple.className = 'ripple';
-    ripple.style.left = `${event.clientX}px`;
-    ripple.style.top = `${event.clientY}px`;
-    rippleLayer.appendChild(ripple);
-    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
-  });
-
-  route();
-})();
-</script>
+    })();
+  </script>
 </body>
 </html>
