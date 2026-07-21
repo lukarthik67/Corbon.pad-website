@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>carbon — a plain text pad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #1b1b18;
+    --paper: #232320;
+    --paper-raised: #29291f;
+    --ink: #ece7dd;
+    --muted: #8a8578;
+    --accent: #d9a441;   /* ribbon amber */
+    --accent-2: #c4562f; /* ribbon red */
+    --line: #3a382f;
+    --danger: #c4562f;
+    --ok: #7f9d6f;
+    --radius: 3px;
+    --display: 'Special Elite', 'Courier New', monospace;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(217,164,65,0.06), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--mono);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{ min-height:100%; display:flex; flex-direction:column; }
+
+  /* ---------- HOME VIEW ---------- */
+  .home{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; gap:28px;
+  }
+  .brand{
+    font-family:var(--display);
+    font-size:clamp(40px, 8vw, 64px);
+    letter-spacing:1px;
+    color:var(--ink);
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .brand .dot{ color:var(--accent); }
+  .tagline{ color:var(--muted); font-size:13px; letter-spacing:2px; text-transform:uppercase; margin-top:-16px; }
+
+  .path-line{
+    display:flex; align-items:center; gap:2px;
+    font-family:var(--mono); font-size:20px;
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 18px; width:min(560px, 90vw);
+  }
+  .path-line .prefix{ color:var(--muted); white-space:nowrap; }
+  .path-line input{
+    flex:1; background:transparent; border:none; outline:none; color:var(--ink);
+    font-family:var(--mono); font-size:20px; caret-color:var(--accent);
+    min-width:0;
+  }
+  .path-line input::placeholder{ color:#514f43; }
+  .cursor-blink{
+    width:9px; height:20px; background:var(--accent);
+    animation:blink 1s step-end infinite; margin-left:2px; flex-shrink:0;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .go-btn{
+    font-family:var(--mono); font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    font-size:13px; color:var(--bg); background:var(--accent); border:none;
+    padding:12px 22px; border-radius:var(--radius); cursor:pointer;
+  }
+  .go-btn:hover{ filter:brightness(1.08); }
+  .home-note{ color:var(--muted); font-size:12.5px; max-width:480px; text-align:center; line-height:1.6; }
+  .home-note b{ color:var(--ink); }
+
+  /* ---------- PAD VIEW ---------- */
+  .pad{ flex:1; display:none; flex-direction:column; }
+  .pad.active{ display:flex; }
+  .home.active{ display:flex; }
+  .home{ display:none; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px; border-bottom:1px solid var(--line); gap:16px; flex-wrap:wrap;
+  }
+  .label-tag{
+    font-family:var(--mono); font-size:14px; background:var(--paper-raised);
+    border:1px solid var(--line); border-top:3px solid var(--accent);
+    padding:8px 14px 7px; border-radius:2px;
+    transform:rotate(-1deg);
+    box-shadow:0 3px 6px rgba(0,0,0,0.35);
+    display:flex; align-items:center; gap:8px;
+    max-width:60vw; overflow:hidden;
+  }
+  .label-tag .home-link{ color:var(--muted); cursor:pointer; text-decoration:none; }
+  .label-tag .home-link:hover{ color:var(--accent); }
+  .label-tag .sep{ color:var(--muted); }
+  .label-tag .name{ color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .controls{ display:flex; align-items:center; gap:14px; }
+  .status{ font-size:12px; color:var(--muted); letter-spacing:0.5px; min-width:74px; text-align:right; }
+  .status.saving{ color:var(--accent); }
+  .status.saved{ color:var(--ok); }
+  .status.locked{ color:var(--danger); }
+
+  .icon-btn{
+    background:var(--paper); border:1px solid var(--line); color:var(--ink);
+    width:36px; height:36px; border-radius:var(--radius); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .icon-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .icon-btn.active-lock{ color:var(--accent); border-color:var(--accent); }
+
+  .editor-wrap{ flex:1; position:relative; }
+  textarea{
+    width:100%; height:100%; resize:none; border:none; outline:none;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent, transparent 30px,
+        var(--line) 31px, transparent 32px
+      ), var(--bg);
+    color:var(--ink); font-family:var(--mono); font-size:15.5px; line-height:31px;
+    padding:20px 26px; caret-color:var(--accent);
+  }
+  textarea:disabled{ color:var(--muted); }
+  textarea::placeholder{ color:#514f43; }
+
+  .readonly-banner{
+    position:absolute; top:10px; right:26px; font-size:11.5px; color:var(--danger);
+    background:rgba(196,86,47,0.1); border:1px solid rgba(196,86,47,0.4);
+    padding:4px 10px; border-radius:2px; letter-spacing:0.5px; text-transform:uppercase;
+    pointer-events:none;
+  }
+
+  /* ---------- MODAL ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,10,8,0.72);
+    display:none; align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .overlay.active{ display:flex; }
+  .modal{
+    background:var(--paper); border:1px solid var(--line); border-top:3px solid var(--accent);
+    border-radius:var(--radius); width:min(420px, 100%); padding:26px;
+  }
+  .modal h2{
+    font-family:var(--display); font-size:20px; margin:0 0 6px; font-weight:400; color:var(--ink);
+  }
+  .modal p.sub{ color:var(--muted); font-size:12.5px; margin:0 0 18px; line-height:1.6; }
+  .modal input[type=password], .modal input[type=text]{
+    width:100%; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius);
+    color:var(--ink); font-family:var(--mono); font-size:15px; padding:11px 12px; outline:none;
+    margin-bottom:10px;
+  }
+  .modal input:focus{ border-color:var(--accent); }
+  .modal-error{
+    color:var(--danger); font-size:12.5px; margin:-2px 0 12px; min-height:16px; line-height:1.5;
+  }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:6px; flex-wrap:wrap; }
+  .btn{
+    font-family:var(--mono); font-size:13px; letter-spacing:0.3px; cursor:pointer;
+    padding:10px 16px; border-radius:var(--radius); border:1px solid var(--line);
+    background:transparent; color:var(--ink);
+  }
+  .btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:700; }
+  .btn.primary:hover{ filter:brightness(1.08); color:var(--bg); }
+  .btn.danger-link{ border:none; background:none; color:var(--muted); text-decoration:underline; padding:10px 4px; }
+  .btn.danger-link:hover{ color:var(--danger); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <div class="home active" id="homeView">
+    <div>
+      <div class="brand">carbon<span class="dot">.</span>pad</div>
+      <div class="tagline">type. it keeps a copy.</div>
+    </div>
+    <div class="path-line">
+      <span class="prefix">carbon.pad/</span>
+      <input id="padNameInput" type="text" placeholder="anything" autocomplete="off" spellcheck="false">
+      <span class="cursor-blink"></span>
+    </div>
+    <button class="go-btn" id="goBtn">open →</button>
+    <div class="home-note">Type any name and it opens a shared page you can write on — nothing to sign up for.
+      Lock a page with a password if you want to keep others out, but <b>every password on this site has to be unique</b> —
+      if someone already claimed it, you'll be asked to pick a different one.</div>
+  </div>
+
+  <!-- PAD -->
+  <div class="pad" id="padView">
+    <div class="topbar">
+      <div class="label-tag">
+        <a class="home-link" id="homeLink" title="back to carbon.pad">carbon.pad</a>
+        <span class="sep">/</span>
+        <span class="name" id="padNameLabel"></span>
+      </div>
+      <div class="controls">
+        <span class="status" id="statusText">loading…</span>
+        <button class="icon-btn" id="lockBtn" title="lock / unlock this page">🔒</button>
+      </div>
+    </div>
+    <div class="editor-wrap">
+      <div class="readonly-banner" id="readonlyBanner" style="display:none;">locked — enter the password to edit</div>
+      <textarea id="editor" placeholder="start typing…" spellcheck="false" disabled></textarea>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: unlock existing pad -->
+<div class="overlay" id="unlockOverlay">
+  <div class="modal">
+    <h2>This page is locked</h2>
+    <p class="sub">Enter the password for <span id="unlockPadName"></span> to view and edit it.</p>
+    <input type="password" id="unlockInput" placeholder="password" autocomplete="off">
+    <div class="modal-error" id="unlockError"></div>
+    <div class="modal-actions">
+      <button class="btn" id="unlockCancel">back to carbon.pad</button>
+      <button class="btn primary" id="unlockSubmit">unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: set / change password -->
+<div class="overlay" id="lockOverlay">
+  <div class="modal">
+    <h2 id="lockModalTitle">Lock this page</h2>
+    <p class="sub">Pick a password. Passwords aren't shared between pages — if this one's already
+      taken by another page, you'll need a different one.</p>
+    <input type="password" id="lockInput" placeholder="new password" autocomplete="off">
+    <div class="modal-error" id="lockError"></div>
+    <div class="modal-actions">
+      <button class="btn danger-link" id="removeLockBtn" style="display:none;">remove password instead</button>
+      <button class="btn" id="lockCancel">cancel</button>
+      <button class="btn primary" id="lockSubmit">save password</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const homeView = document.getElementById('homeView');
+  const padView = document.getElementById('padView');
+  const padNameInput = document.getElementById('padNameInput');
+  const goBtn = document.getElementById('goBtn');
+  const homeLink = document.getElementById('homeLink');
+  const padNameLabel = document.getElementById('padNameLabel');
+  const statusText = document.getElementById('statusText');
+  const lockBtn = document.getElementById('lockBtn');
+  const editor = document.getElementById('editor');
+  const readonlyBanner = document.getElementById('readonlyBanner');
+
+  const unlockOverlay = document.getElementById('unlockOverlay');
+  const unlockPadName = document.getElementById('unlockPadName');
+  const unlockInput = document.getElementById('unlockInput');
+  const unlockError = document.getElementById('unlockError');
+  const unlockSubmit = document.getElementById('unlockSubmit');
+  const unlockCancel = document.getElementById('unlockCancel');
+
+  const lockOverlay = document.getElementById('lockOverlay');
+  const lockModalTitle = document.getElementById('lockModalTitle');
+  const lockInput = document.getElementById('lockInput');
+  const lockError = document.getElementById('lockError');
+  const lockSubmit = document.getElementById('lockSubmit');
+  const lockCancel = document.getElementById('lockCancel');
+  const removeLockBtn = document.getElementById('removeLockBtn');
+
+  let currentPad = null;      // pad name currently open
+  let padData = null;         // { content, passwordHash, tokens: [] }
+  let unlocked = false;       // can the editor be edited right now
+  let saveTimer = null;
+
+  // ---------- helpers ----------
+  async function sha256Hex(text){
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function randomToken(){
+    const arr = new Uint8Array(24);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function storageGet(key, shared){
+    try{
+      const res = await window.storage.get(key, shared);
+      return res ? res.value : null;
+    }catch(e){
+      return null; // treat missing / failed reads as "not found"
+    }
+  }
+  async function storageSet(key, value, shared){
+    try{
+      const res = await window.storage.set(key, value, shared);
+      return !!res;
+    }catch(e){
+      return false;
+    }
+  }
+  async function storageDelete(key, shared){
+    try{ await window.storage.delete(key, shared); }catch(e){ /* ignore */ }
+  }
+
+  function setStatus(text, cls){
+    statusText.textContent = text;
+    statusText.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  function sanitizeName(raw){
+    return raw.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9\-_.]/g, '');
+  }
+
+  function goHome(){
+    location.hash = '';
+  }
+
+  function goToPad(name){
+    location.hash = '#/' + encodeURIComponent(name);
+  }
+
+  // ---------- routing ----------
+  function currentRouteName(){
+    const h = location.hash;
+    if (!h || h === '#' || h === '#/') return null;
+    const m = h.match(/^#\/(.+)$/);
+    if (!m) return null;
+    try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; }
+  }
+
+  window.addEventListener('hashchange', route);
+  function route(){
+    const name = currentRouteName();
+    if (!name){
+      homeView.classList.add('active');
+      padView.classList.remove('active');
+      closeAllOverlays();
+      currentPad = null;
+      padData = null;
+      return;
+    }
+    homeView.classList.remove('active');
+    padView.classList.add('active');
+    openPad(name);
+  }
+
+  // ---------- opening a pad ----------
+  async function openPad(name){
+    currentPad = name;
+    padNameLabel.textContent = name;
+    editor.value = '';
+    editor.disabled = true;
+    unlocked = false;
+    readonlyBanner.style.display = 'none';
+    lockBtn.classList.remove('active-lock');
+    setStatus('loading…');
+
+    const raw = await storageGet('pad:' + name, true);
+    if (raw){
+      try{ padData = JSON.parse(raw); }
+      catch(e){ padData = { content:'', passwordHash:null, tokens:[] }; }
+    } else {
+      padData = { content:'', passwordHash:null, tokens:[] };
+    }
+    if (!padData.tokens) padData.tokens = [];
+
+    if (!padData.passwordHash){
+      unlocked = true;
+    } else {
+      const myToken = await storageGet('mytoken:' + name, false);
+      if (myToken && padData.tokens.includes(myToken)){
+        unlocked = true;
+      } else {
+        unlocked = false;
+      }
+    }
+
+    renderLockState();
+
+    if (!unlocked){
+      promptUnlock();
+    } else {
+      editor.value = padData.content || '';
+      editor.disabled = false;
+      setStatus('saved', 'saved');
+    }
+  }
+
+  function renderLockState(){
+    if (padData && padData.passwordHash){
+      lockBtn.textContent = '🔒';
+      lockBtn.classList.add('active-lock');
+    } else {
+      lockBtn.textContent = '🔓';
+      lockBtn.classList.remove('active-lock');
+    }
+    if (!unlocked && padData && padData.passwordHash){
+      editor.disabled = true;
+      readonlyBanner.style.display = 'block';
+      setStatus('locked', 'locked');
+    } else {
+      readonlyBanner.style.display = 'none';
+    }
+  }
+
+  // ---------- autosave ----------
+  editor.addEventListener('input', () => {
+    if (!unlocked) return;
+    setStatus('saving…', 'saving');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveContent, 600);
+  });
+
+  async function saveContent(){
+    if (!currentPad || !padData) return;
+    padData.content = editor.value;
+    const ok = await storageSet('pad:' + currentPad, JSON.stringify(padData), true);
+    setStatus(ok ? 'saved' : 'couldn\'t save', ok ? 'saved' : 'locked');
+  }
+
+  // ---------- home view actions ----------
+  goBtn.addEventListener('click', () => {
+    const name = sanitizeName(padNameInput.value);
+    if (name) goToPad(name);
+  });
+  padNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') goBtn.click();
+  });
+  homeLink.addEventListener('click', goHome);
+
+  // ---------- unlock modal ----------
+  function promptUnlock(){
+    unlockPadName.textContent = 'carbon.pad/' + currentPad;
+    unlockInput.value = '';
+    unlockError.textContent = '';
+    unlockOverlay.classList.add('active');
+    setTimeout(() => unlockInput.focus(), 50);
+  }
+  function closeUnlock(){
+    unlockOverlay.classList.remove('active');
+  }
+  unlockCancel.addEventListener('click', () => { closeUnlock(); goHome(); });
+  unlockInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlockSubmit.click(); });
+
+  unlockSubmit.addEventListener('click', async () => {
+    const pw = unlockInput.value;
+    if (!pw){ unlockError.textContent = 'enter a password.'; return; }
+    unlockSubmit.disabled = true;
+    const hash = await sha256Hex(pw);
+    if (hash === padData.passwordHash){
+      const token = randomToken();
+      padData.tokens.push(token);
+      if (padData.tokens.length > 25) padData.tokens = padData.tokens.slice(-25);
+      await storageSet('pad:' + currentPad, JSON.stringify(padData), true);
+      await storageSet('mytoken:' + currentPad, token, false);
+      unlocked = true;
+      closeUnlock();
+      renderLockState();
+      editor.value = padData.content || '';
+      editor.disabled = false;
+      setStatus('saved', 'saved');
+    } else {
+      unlockError.textContent = 'wrong password. try again.';
+    }
+    unlockSubmit.disabled = false;
+  });
+
+  // ---------- lock / change-password modal ----------
+  lockBtn.addEventListener('click', () => {
+    if (!currentPad) return;
+    if (padData.passwordHash && !unlocked){
+      // locked and viewer hasn't proven ownership - just re-show unlock
+      promptUnlock();
+      return;
+    }
+    openLockModal();
+  });
+
+  function openLockModal(){
+    lockModalTitle.textContent = padData.passwordHash ? 'Change password' : 'Lock this page';
+    lockInput.value = '';
+    lockError.textContent = '';
+    removeLockBtn.style.display = padData.passwordHash ? 'inline-block' : 'none';
+    lockOverlay.classList.add('active');
+    setTimeout(() => lockInput.focus(), 50);
+  }
+  function closeLockModal(){ lockOverlay.classList.remove('active'); }
+  lockCancel.addEventListener('click', closeLockModal);
+  lockInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') lockSubmit.click(); });
+
+  lockSubmit.addEventListener('click', async () => {
+    const pw = lockInput.value;
+    if (!pw || pw.length < 3){
+      lockError.textContent = 'password needs to be at least 3 characters.';
+      return;
+    }
+    lockSubmit.disabled = true;
+    lockError.textContent = '';
+
+    const newHash = await sha256Hex(pw);
+    const owner = await storageGet('pwindex:' + newHash, true);
+
+    if (owner && owner !== currentPad){
+      lockError.textContent = 'that password is already used on another page — please choose a different password.';
+      lockSubmit.disabled = false;
+      return;
+    }
+
+    // free up the old index entry, if this pad had a different password before
+    if (padData.passwordHash && padData.passwordHash !== newHash){
+      const oldOwner = await storageGet('pwindex:' + padData.passwordHash, true);
+      if (oldOwner === currentPad){
+        await storageDelete('pwindex:' + padData.passwordHash, true);
+      }
+    }
+
+    const token = randomToken();
+    padData.passwordHash = newHash;
+    padData.tokens = [token];
+    await storageSet('pad:' + currentPad, JSON.stringify(padData), true);
+    await storageSet('pwindex:' + newHash, currentPad, true);
+    await storageSet('mytoken:' + currentPad, token, false);
+
+    unlocked = true;
+    lockSubmit.disabled = false;
+    closeLockModal();
+    renderLockState();
+    editor.disabled = false;
+    setStatus('saved', 'saved');
+  });
+
+  removeLockBtn.addEventListener('click', async () => {
+    if (padData.passwordHash){
+      await storageDelete('pwindex:' + padData.passwordHash, true);
+    }
+    padData.passwordHash = null;
+    padData.tokens = [];
+    await storageSet('pad:' + currentPad, JSON.stringify(padData), true);
+    await storageDelete('mytoken:' + currentPad, false);
+    unlocked = true;
+    closeLockModal();
+    renderLockState();
+    editor.disabled = false;
+    setStatus('saved', 'saved');
+  });
+
+  function closeAllOverlays(){
+    unlockOverlay.classList.remove('active');
+    lockOverlay.classList.remove('active');
+  }
+
+  // ---------- boot ----------
+  route();
+})();
+</script>
+</body>
+</html>
