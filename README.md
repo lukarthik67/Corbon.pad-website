@@ -1,6 +1,10 @@
 # CarbonPad
 
-A lightweight, privacy-focused online notepad that lets anyone create and share notes instantly using a unique Pad ID. No accounts, no login, and no passwords required.
+A lightweight, privacy-focused online notepad that lets anyone create and share notes instantly using a unique Pad ID. No accounts, no login, and no passwords required.  
+
+<img width="642" height="566" alt="Image" src="https://github.com/user-attachments/assets/e67be671-146b-4c94-acaa-9f8cf66e6fc1" />  
+
+
 
 ## Live Demo
 
